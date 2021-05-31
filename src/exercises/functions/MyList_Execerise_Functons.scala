@@ -170,5 +170,12 @@ object CaseListTest2 extends App {
   println(anotherListOfIntegers.zipWith[String,String](listOfStrings,_+"-"+_))
 
   println(listOfIntegers.fold(0)(_+_))
+
+  val combinations = for{
+    n<- listOfIntegers
+    s <- listOfStrings
+  } yield n+"-"+s
+
+  println(combinations)
 }
 
