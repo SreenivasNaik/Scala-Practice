@@ -36,6 +36,11 @@ abstract class MyCaseGenericList[+A] {
   def flatMap[B](transformer: A=>MyCaseGenericList[B]):MyCaseGenericList[B]
   def filter(predicate: A=>Boolean):MyCaseGenericList[A]
   def ++[B >: A](list:MyCaseGenericList[B]):MyCaseGenericList[B]
+  // HOFS
+  def foreach(f:A=>Unit):Unit
+  def sort(compare:(A,A)=>Int):MyCaseGenericList[A]
+  def zipWith[B,C](list:MyCaseGenericList[B],zip:(A,B)=>C):MyCaseGenericList[C]
+  def fold[B](start:B)(operator:(B,A)=>B):B
 }
 case object EmptyCaseGeneric extends MyCaseGenericList[Nothing]{
   def head:Nothing = throw new NoSuchElementException
@@ -50,6 +55,18 @@ case object EmptyCaseGeneric extends MyCaseGenericList[Nothing]{
   def filter(predicate: Nothing=>Boolean):MyCaseGenericList[Nothing] = EmptyCaseGeneric
 
   override def ++[B >: Nothing](list: MyCaseGenericList[B]): MyCaseGenericList[B] = list
+
+  // HOFs
+  override def foreach(f: Nothing => Unit): Unit = ()
+
+  override def sort(compare: (Nothing, Nothing) => Int): MyCaseGenericList[Nothing] = EmptyCaseGeneric
+
+  override def zipWith[B, C](list: MyCaseGenericList[B], zip: (Nothing, B) => C): MyCaseGenericList[C] = {
+    if(!list.isEmpty) throw new RuntimeException("Lists do not hae same length")
+    else EmptyCaseGeneric
+  }
+
+  override def fold[B](start: B)(operator: (B, Nothing) => B): B = start
 }
 
 case class ConsCaseGeneric[+A](h:A, t:MyCaseGenericList[A]) extends MyCaseGenericList[A] {
@@ -79,6 +96,37 @@ case class ConsCaseGeneric[+A](h:A, t:MyCaseGenericList[A]) extends MyCaseGeneri
     transformer(h) ++ t.flatMap(transformer)
 
   override def ++[B >: A](list: MyCaseGenericList[B]): MyCaseGenericList[B] = new ConsCaseGeneric[B](h,t ++ list)
+
+  //HOFs
+  override def foreach(f: A => Unit): Unit = {
+    f(h)
+    t.foreach(f)
+  }
+
+  def sort(compare:(A,A)=>Int):MyCaseGenericList[A] = {
+    def insert(x: A, value: MyCaseGenericList[A]):MyCaseGenericList[A] = {
+      if(value.isEmpty) new ConsCaseGeneric(x,EmptyCaseGeneric)
+      else if( compare(x,value.head)<=0) new ConsCaseGeneric(x,value)
+      else new ConsCaseGeneric(value.head,insert(x,value.tail))
+    }
+
+    val sortedTail = t.sort(compare)
+    insert(h,sortedTail)
+  }
+
+  override def zipWith[B, C](list: MyCaseGenericList[B], zip: (A, B) => C): MyCaseGenericList[C] = {
+    if(list.isEmpty) throw new RuntimeException("Lists do not hae same length")
+    else new ConsCaseGeneric(zip(h,list.head),tail.zipWith(list.tail,zip))
+  }
+
+  /*
+  * [1,2,3].fold(0)(+) =
+  * [2,3].fold(1)(+) = [3].fold(3)(+) = [].fold(6)(+) = 6
+  * */
+  override def fold[B](start: B)(operator: (B, A) => B): B = {
+    val newStart = operator(start,h)
+    tail.fold(operator(start,h))(operator)
+  }
 }
 
 //trait MyPredicate[-T]{
@@ -105,7 +153,7 @@ object CaseListTest2 extends App {
     override def apply(elem: Int): Boolean = elem%2 == 0
   }).toString)
 
-  val anotherListOfIntegers:MyCaseGenericList[Int] = new ConsCaseGeneric(4,new ConsCaseGeneric(5,new ConsCaseGeneric(6,EmptyCaseGeneric)))
+  val anotherListOfIntegers:MyCaseGenericList[Int] = new ConsCaseGeneric(4,new ConsCaseGeneric(5,EmptyCaseGeneric))
 
   println(listOfIntegers ++ anotherListOfIntegers)
 
@@ -114,5 +162,13 @@ object CaseListTest2 extends App {
   }).toString)
 
   println(listOfIntegers == clonelistOfIntegers)
+
+  listOfIntegers.foreach(println)
+
+  println(listOfIntegers.sort((x,y)=>y-x))
+
+  println(anotherListOfIntegers.zipWith[String,String](listOfStrings,_+"-"+_))
+
+  println(listOfIntegers.fold(0)(_+_))
 }
 

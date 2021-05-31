@@ -32,5 +32,15 @@ object HofsCurriers extends  App {
 
   println(standardFormat(Math.PI))
   println(preciseFormat(Math.PI))
+
+  /*
+  * toCurry(f:(Int,Int)=>Int)=>(Int=>Int=>Int)
+  * fromCurry(f:(Int=>Int=>Int)) => (Int,Int) =>Int
+  *
+  * */
+
+  def toCurry(f:(Int,Int)=>Int):(Int=>Int=>Int) =
+    x=>y=>f(x,y)
+  def fromCurry(f:(Int=>Int=>Int)):(Int,Int)=>Int    = (x,y)=>f(x)(y)
 }
 
